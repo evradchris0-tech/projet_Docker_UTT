@@ -1,0 +1,54 @@
+name: todoist
+
+services:
+  web:
+    build: .
+    image: todoist-web:1.0
+    environment:
+      TZ: ${TZ:-Europe/Paris}
+      DB_HOST: db
+      DB_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${APP_PORT:-8080}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    # PETITE DECOUVERTE PERSONNELLE : Le code est copié dans l'image (COPY), donc chaque modification impose "docker compose up -d --build".
+    # En développement, Compose Watch évite ce rebuild
+
+  db:
+    image: mysql:8.4.6
+    environment:
+      TZ: ${TZ:-Europe/Paris}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u\"$$MYSQL_USER\" -p\"$$MYSQL_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      # La 1re initialisation de MySQL dure 161 s sur ma machine : les échecs ne comptent pas pendant start_period.
+      start_period: 300s
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:5.3.0
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "/var/www/html"]
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  db_data:

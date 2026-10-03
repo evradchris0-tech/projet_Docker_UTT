@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TODOist</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">T</span>
+      <span class="brand-name">TODOist<small>Gestion des tâches</small></span>
+    </div>
+
+    <p class="section-label">Vues</p>
+    <nav id="views">
+      <button data-view="inbox" class="active">Boîte de réception</button>
+      <button data-view="today">Aujourd'hui</button>
+      <button data-view="upcoming">À venir</button>
+      <button data-view="all">Toutes les tâches</button>
+      <button data-view="done">Terminées</button>
+    </nav>
+
+    <p class="section-label">Projets <span class="label-hint">= catégories</span></p>
+    <ul id="projects"></ul>
+    <form id="project-form">
+      <input id="project-color" type="color" value="#2563eb" title="Couleur du projet">
+      <input id="project-name" placeholder="Nouveau projet" maxlength="60" required>
+      <button type="submit" title="Ajouter le projet">Ajouter</button>
+    </form>
+
+    <p class="status" id="status">…</p>
+  </aside>
+
+  <main>
+    <header class="page-head">
+      <div>
+        <p class="today" id="today"></p>
+        <h2 id="view-title">Boîte de réception</h2>
+      </div>
+      <span class="counter" id="view-count"></span>
+    </header>
+
+    <details class="card help" id="help">
+      <summary>Comment organiser mes tâches ?</summary>
+      <dl>
+        <dt>Projet</dt>
+        <dd>C'est la <strong>catégorie</strong> de la tâche : Travail, Perso, UTT, Courses…
+          Crée tes projets dans la barre de gauche. Une tâche sans projet va dans la <em>Boîte de réception</em>.</dd>
+        <dt>Priorité</dt>
+        <dd>L'importance : <span class="prio p1">P1</span> urgente, <span class="prio p2">P2</span> haute,
+          <span class="prio p3">P3</span> moyenne, P4 normale. Les tâches sont triées par échéance puis par priorité.</dd>
+        <dt>Échéance</dt>
+        <dd>La date limite. Elle alimente les vues <em>Aujourd'hui</em> (échéance du jour ou dépassée) et <em>À venir</em>.</dd>
+        <dt>Saisie rapide</dt>
+        <dd>Tu peux tout écrire dans la phrase : <code>Réviser Docker demain p1 #UTT</code>.
+          Les listes se remplissent toutes seules, et tu peux les corriger avant d'ajouter.</dd>
+        <dt>Modifier</dt>
+        <dd>Clique sur le titre d'une tâche pour changer son titre, son projet, sa priorité ou son échéance.</dd>
+      </dl>
+    </details>
+
+    <section class="card">
+      <form id="quick-form" class="quick">
+        <div class="quick-row">
+          <input id="quick-text" maxlength="300" autocomplete="off" required
+                 placeholder="Nouvelle tâche, ex. : Réviser Docker demain p1 #UTT">
+          <button type="submit">Ajouter la tâche</button>
+        </div>
+        <div class="fields">
+          <label>Projet <select id="quick-project"></select></label>
+          <label>Priorité
+            <select id="quick-priority">
+              <option value="1">P1 · Urgente</option>
+              <option value="2">P2 · Haute</option>
+              <option value="3">P3 · Moyenne</option>
+              <option value="4" selected>P4 · Normale</option>
+            </select>
+          </label>
+          <label>Échéance <input id="quick-due" type="date"></label>
+        </div>
+      </form>
+      <p class="hint" id="quick-preview">Raccourcis dans la phrase : <code>demain</code>, <code>lundi</code>, <code>25/12</code>
+        &nbsp;·&nbsp; <code>p1</code> à <code>p4</code> &nbsp;·&nbsp; <code>#Projet</code> (créé s'il n'existe pas)</p>
+    </section>
+
+    <p class="error" id="error" hidden></p>
+
+    <section class="card list">
+      <ul id="tasks" class="tasks"></ul>
+      <p id="empty" class="empty" hidden>Aucune tâche dans cette vue.</p>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
