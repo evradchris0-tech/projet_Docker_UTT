@@ -7,7 +7,7 @@ Application web de gestion de tâches (créer, lister, terminer, classer par pro
 La commande est `docker compose` (Compose v2), pas l'ancien `docker-compose`.
 
 - Docker Engine 24.0 ou plus récent
-- Docker Compose 2.20 ou plus récent
+- Docker Compose 2.23 ou plus récent
 
 ## Démarrage
 
@@ -39,6 +39,16 @@ Elles sont lues dans le fichier `.env`, créé à partir de `.env.example`.
 - `TZ` : fuseau horaire des conteneurs
 - `APP_PORT` : port de l'hôte vers l'application
 - `ADMINER_PORT` : port de l'hôte vers Adminer
+
+## Développement
+
+Pour que les modifications du code soient prises en compte sans reconstruire l'image :
+
+```bash
+docker compose up --watch
+```
+
+Un fichier modifié dans `app/` est copié dans le conteneur, puis `web` redémarre. Une modification de `requirements.txt` reconstruit l'image.
 
 ## Commandes utiles
 

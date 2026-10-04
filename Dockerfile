@@ -12,7 +12,7 @@ RUN useradd --create-home --uid 10001 appuser
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY app/ ./app/
+COPY --chown=appuser:appuser app/ ./app/
 
 USER appuser
 EXPOSE 8000

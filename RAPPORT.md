@@ -1,6 +1,6 @@
 # RAPPORT
 
-Mesures prises le 4 octobre 2026 sur ma machine (Windows 11, Docker Desktop 4.92.0, Docker Engine 29.8.0, Compose 5.5.1). Celles des questions 2, 3 et 4 viennent de `scripts/mesures.sh`.
+Mesures prises le 4 octobre 2026 sur ma machine (Windows 11, Docker Desktop 4.92.0, Docker Engine 29.8.0, Compose 5.5.1). Celles des questions 2, 3 et 4 viennent des commandes de `scripts/mesures.sh`.
 
 ## 1. Image de base
 
@@ -21,14 +21,14 @@ WORKDIR /app
 RUN useradd --create-home --uid 10001 appuser
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-COPY app/ ./app/
+COPY --chown=appuser:appuser app/ ./app/
 USER appuser
 EXPOSE 8000
 HEALTHCHECK ...
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-Une couche est réutilisée si son instruction et ses fichiers d'entrée n'ont pas changé, et si toutes les couches précédentes ont été réutilisées. Quand je modifie une ligne de code, seule `COPY app/ ./app/` est refaite : `requirements.txt` n'a pas changé, donc `pip install` reste en cache. Les quatre instructions qui suivent ne coûtent rien, ce sont des métadonnées (0B dans `docker history`).
+Une couche est réutilisée si son instruction et ses fichiers d'entrée n'ont pas changé, et si toutes les couches précédentes ont été réutilisées. Quand je modifie une ligne de code, seule `COPY --chown=appuser:appuser app/ ./app/` est refaite : `requirements.txt` n'a pas changé, donc `pip install` reste en cache. Les quatre instructions qui suivent ne coûtent rien, ce sont des métadonnées (0B dans `docker history`).
 
 Premier build, sans cache (`docker compose build --no-cache --progress=plain web`, extrait) :
 
@@ -36,15 +36,15 @@ Premier build, sans cache (`docker compose build --no-cache --progress=plain web
 #8 [2/6] WORKDIR /app
 #8 CACHED
 #9 [3/6] RUN useradd --create-home --uid 10001 appuser
-#9 DONE 7.5s
+#9 DONE 3.8s
 #10 [4/6] COPY requirements.txt .
-#10 DONE 2.5s
+#10 DONE 1.5s
 #11 [5/6] RUN pip install -r requirements.txt
-#11 DONE 29.9s
-#12 [6/6] COPY app/ ./app/
-#12 DONE 1.6s
+#11 DONE 16.4s
+#12 [6/6] COPY --chown=appuser:appuser app/ ./app/
+#12 DONE 2.2s
 
-real    1m22.427s
+real    0m47.820s
 ```
 
 Second build, après l'ajout d'une ligne dans `app/main.py` (extrait) :
@@ -58,19 +58,31 @@ Second build, après l'ajout d'une ligne dans `app/main.py` (extrait) :
 #9 CACHED
 #10 [5/6] RUN pip install -r requirements.txt
 #10 CACHED
-#11 [6/6] COPY app/ ./app/
-#11 DONE 2.7s
+#11 [6/6] COPY --chown=appuser:appuser app/ ./app/
+#11 DONE 3.0s
 
-real    0m16.965s
+real    0m16.429s
 ```
 
-Le build passe de 1 min 22 s à 17 s. Si `COPY app/` était placé avant `pip install`, chaque modification du code relancerait les 30 s d'installation. Même avec `--no-cache`, BuildKit a affiché `WORKDIR` en `CACHED` ; toutes les autres étapes ont été réexécutées.
+Le build passe de 48 s à 16 s. Si `COPY app/` était placé avant `pip install`, chaque modification du code relancerait les 16 s d'installation. Même avec `--no-cache`, BuildKit a affiché `WORKDIR` en `CACHED` ; toutes les autres étapes ont été réexécutées.
+
+En développement, je ne reconstruis plus l'image à chaque modification : j'ai ajouté Compose Watch (`develop.watch` dans `compose.yaml`). Avec `docker compose up --watch`, un fichier modifié dans `app/` est copié dans le conteneur, puis `web` redémarre (action `sync+restart`). Seule une modification de `requirements.txt` déclenche une reconstruction (action `rebuild`).
+
+C'est ce qui explique `--chown=appuser:appuser` sur le `COPY`. Sans cette option, `/app/app` appartient à `root` alors que le conteneur tourne en `appuser`. La copie d'un fichier modifié passait, mais pas la suppression d'un fichier (extrait de `docker compose watch`, après suppression de `app/__init__.py`) :
+
+```
+Syncing service "web" after 1 changes were detected
+rm: cannot remove '/app/app/__init__.py': Permission denied
+level=warning msg="Error handling changed files: deleting paths in f12da84a139e...: exit code 1"
+```
+
+Le fichier restait dans le conteneur et `web` n'était pas redémarré. Avec `--chown`, la même suppression est appliquée en quelques secondes et `web` redémarre. L'option ne change ni l'ordre des couches ni la taille de la couche (77,8 ko avant comme après).
 
 ## 3. Taille
 
 ```
 IMAGE             ID             DISK USAGE   CONTENT SIZE
-todoist-web:1.0   3daf7d512bc0        238MB         56.8MB
+todoist-web:1.0   9fce56a33041        238MB         56.8MB
 ```
 
 `docker history todoist-web:1.0` donne le détail des couches :
@@ -82,13 +94,13 @@ todoist-web:1.0   3daf7d512bc0        238MB         56.8MB
 
 Les couches font 181 Mo une fois décompressées. `CONTENT SIZE` (56,8 Mo) est la taille compressée, celle qui transite lors d'un `push` ou d'un `pull`. `DISK USAGE` (238 Mo) est la somme des deux.
 
-Je n'ai pas de mesure avant et après : l'image a été construite d'emblée sur `slim`, avec `PIP_NO_CACHE_DIR=1` pour ne pas garder le cache de pip dans la couche, et un `.dockerignore` qui écarte les tests, les scripts et `.env`.
+Je n'ai pas de mesure avant et après : l'image a été construite d'emblée sur `slim`, avec `PIP_NO_CACHE_DIR=1` pour ne pas garder le cache de pip dans la couche, et un `.dockerignore` qui écarte les scripts, les mesures et `.env`.
 
 ## 4. Persistance
 
 MySQL écrit ses données dans `/var/lib/mysql`, où `compose.yaml` monte le volume nommé `db_data` (nom réel : `todoist_db_data`). Les données sont donc dans le volume, pas dans le conteneur.
 
-`docker compose down` arrête et supprime les trois conteneurs et le réseau `todoist_default`, mais pas le volume. Au `up` suivant, Compose recrée le réseau et les conteneurs et remonte le même volume. MySQL trouve un dossier de données déjà rempli : il ne réinitialise rien et ignore les variables `MYSQL_*`. `web` attend que `db` soit `healthy`, puis `create_all` ne crée aucune table puisqu'elles existent.
+`docker compose down` arrête et supprime les trois conteneurs et le réseau `todoist_default`, mais pas le volume. Au `up` suivant, Compose recrée le réseau et les conteneurs et remonte le même volume. MySQL trouve un dossier de données déjà rempli : il ne réinitialise rien et ignore les variables `MYSQL_*`. `web` et `adminer` attendent que `db` soit `healthy`, puis `create_all` ne crée aucune table puisqu'elles existent.
 
 Mesuré : 2 tâches au départ, 3 après un ajout, 3 après `docker compose restart`, 3 après `down` puis `up`. Après le `down`, `docker volume ls` affichait toujours `todoist_db_data`.
 

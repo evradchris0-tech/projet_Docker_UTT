@@ -6,11 +6,10 @@
 **/*.pyc
 .venv
 venv
-.pytest_cache
-tests/
 scripts/
 docs/
 *.md
+*.pdf
 compose.yaml
 Dockerfile
 .dockerignore

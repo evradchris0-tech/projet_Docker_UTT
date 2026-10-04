@@ -19,6 +19,15 @@ services:
     restart: unless-stopped
     # PETITE DECOUVERTE PERSONNELLE : Le code est copié dans l'image (COPY), donc chaque modification impose "docker compose up -d --build".
     # En développement, Compose Watch évite ce rebuild
+    develop:
+      watch:
+        # Code modifié : copie dans le conteneur puis redémarrage d'uvicorn
+        - action: sync+restart
+          path: ./app
+          target: /app/app
+        # Dépendances modifiées : reconstruction de l'image
+        - action: rebuild
+          path: requirements.txt
 
   db:
     image: mysql:8.4.6
@@ -35,7 +44,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-      # La 1re initialisation de MySQL dure 161 s sur ma machine : les échecs ne comptent pas pendant start_period.
+      # La 1re initialisation de MySQL dure 161 s sur ma machine
       start_period: 300s
     restart: unless-stopped
 
@@ -47,7 +56,8 @@ services:
     ports:
       - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

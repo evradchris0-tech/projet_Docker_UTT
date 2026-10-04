@@ -1,10 +1,3 @@
-#!/usr/bin/env bash
-# ---------------------------------------------------------------------------
-# Relève les mesures demandées dans le RAPPORT, sur VOTRE machine.
-#   bash scripts/mesures.sh              -> build, cache, taille, restart, down/up
-#   bash scripts/mesures.sh --avec-down-v -> ajoute le test "down -v" (EFFACE LA BASE)
-# Résultats écrits dans mesures/*.txt (dossier ignoré par l'image Docker).
-# ---------------------------------------------------------------------------
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT=mesures
