@@ -10,7 +10,7 @@ from . import config
 
 log = logging.getLogger("todoist.db")
 
-# pool_pre_ping : vérifie la connexion avant usage (utile après un restart de la base)
+# vérifie la connexion avant usage (utile après un restart de la base)
 engine = create_engine(config.DATABASE_URL, pool_pre_ping=True, pool_recycle=3600)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
